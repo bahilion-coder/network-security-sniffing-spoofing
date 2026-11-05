@@ -1,0 +1,63 @@
+name: network-security-sniffing-spoofing
+
+hosts:
+  - name: attacker
+    base_box:
+      # Replace with the exact SEED Ubuntu 20.04 image name registered in OpenStack.
+      image: seed-ubuntu-20.04
+      mgmt_user: seed
+    flavor: m1.medium
+
+  - name: client
+    base_box:
+      image: debian-12-x86_64
+      mgmt_user: debian
+    flavor: standard.small
+    hidden: true
+
+  - name: server
+    base_box:
+      image: debian-12-x86_64
+      mgmt_user: debian
+    flavor: standard.small
+    hidden: true
+
+routers:
+  - name: router
+    base_box:
+      image: debian-12-x86_64
+      mgmt_user: debian
+    flavor: standard.small
+
+wan:
+  name: internet-connection
+  cidr: 100.100.100.0/24
+
+networks:
+  - name: lab-network
+    cidr: 10.9.0.0/24
+    accessible_by_user: true
+
+net_mappings:
+  - host: attacker
+    network: lab-network
+    ip: 10.9.0.5
+  - host: client
+    network: lab-network
+    ip: 10.9.0.6
+  - host: server
+    network: lab-network
+    ip: 10.9.0.7
+
+router_mappings:
+  - router: router
+    network: lab-network
+    ip: 10.9.0.1
+
+groups:
+  - name: lab-machines
+    nodes:
+      - attacker
+      - client
+      - server
+      - router

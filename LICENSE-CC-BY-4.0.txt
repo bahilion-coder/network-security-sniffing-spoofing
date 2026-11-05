@@ -1,0 +1,5 @@
+The Library Junior template identifies its game design as licensed under the
+Creative Commons Attribution 4.0 International License (CC BY 4.0).
+
+License text: https://creativecommons.org/licenses/by/4.0/legalcode
+Original template attribution is preserved in TEMPLATE-ATTRIBUTION.txt.

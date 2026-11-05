@@ -1,0 +1,115 @@
+---
+- name: Install SEED workstation tools and development libraries
+  ansible.builtin.apt:
+    name:
+      - scapy
+      - python3-scapy
+      - gcc
+      - make
+      - libc6-dev
+      - libpcap-dev
+      - tcpdump
+      - tshark
+      - wireshark
+      - telnet
+      - inetutils-telnetd
+      - openbsd-inetd
+      - socat
+      - sshpass
+    state: present
+
+- name: Ensure lab directory exists
+  ansible.builtin.file:
+    path: /opt/netsec-lab
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Install student helper scripts
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/opt/netsec-lab/{{ item }}"
+    owner: root
+    group: root
+    mode: '0755'
+  loop:
+    - trigger-client-icmp.sh
+    - trigger-client-tcp.sh
+    - trigger-client-udp.sh
+    - trigger-client-telnet.sh
+    - trigger-client-spoof-test.sh
+
+- name: Install TCP marker listener
+  ansible.builtin.template:
+    src: marker-listener.py.j2
+    dest: /opt/netsec-lab/marker-listener.py
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Install marker listener systemd unit
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/netsec-marker.service
+    mode: '0644'
+    content: |
+      [Unit]
+      Description=Network Security TP marker listener
+      After=network.target
+      [Service]
+      ExecStart=/usr/bin/python3 /opt/netsec-lab/marker-listener.py
+      Restart=always
+      [Install]
+      WantedBy=multi-user.target
+
+- name: Configure Telnet test account
+  ansible.builtin.user:
+    name: labtelnet
+    password: "{{ flag_m7_telnet | password_hash('sha512') }}"
+    shell: /bin/bash
+    create_home: true
+
+- name: Configure inetd Telnet service
+  ansible.builtin.lineinfile:
+    path: /etc/inetd.conf
+    regexp: '^telnet'
+    line: 'telnet stream tcp nowait root /usr/sbin/in.telnetd in.telnetd'
+    create: true
+  notify: Restart inetd
+
+- name: Enable marker listener and inetd
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+  loop:
+    - netsec-marker
+    - openbsd-inetd
+
+- name: Create lab information file
+  ansible.builtin.copy:
+    dest: /opt/netsec-lab/README-student.txt
+    mode: '0644'
+    content: |
+      Network Security TP helper scripts
+      ----------------------------------
+      Run the relevant /opt/netsec-lab/trigger-client-*.sh script to generate
+      controlled traffic from the client. These scripts are provided to make
+      traffic reproducible; they do not replace writing your own sniffer/spoofer.
+      Client access: ssh student@10.9.0.6 (password: StudentLab2026!)
+
+- name: Ensure student user exists on attacker
+  ansible.builtin.user:
+    name: user
+    password: "{{ 'StudentLab2026!' | password_hash('sha512') }}"
+    groups: sudo
+    append: true
+    shell: /bin/bash
+
+- name: Disable kernel ICMP echo replies for the sniff-and-spoof mission
+  ansible.builtin.sysctl:
+    name: net.ipv4.icmp_echo_ignore_all
+    value: '1'
+    state: present
+    reload: true

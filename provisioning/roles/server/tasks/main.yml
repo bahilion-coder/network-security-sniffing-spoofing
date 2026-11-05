@@ -1,0 +1,53 @@
+---
+- name: Install server network services
+  ansible.builtin.apt:
+    name:
+      - openssh-server
+      - nginx
+      - netcat-openbsd
+    state: present
+
+- name: Create exercise token pages
+  ansible.builtin.file:
+    path: /var/www/html/flags
+    state: directory
+    mode: '0755'
+
+- name: Publish ICMP spoofing token
+  ansible.builtin.copy:
+    dest: /var/www/html/flags/spoof.txt
+    mode: '0644'
+    content: "{{ flag_m3_spoof }}\n"
+
+- name: Publish traceroute investigation token
+  ansible.builtin.copy:
+    dest: /var/www/html/flags/trace.txt
+    mode: '0644'
+    content: "{{ flag_m4_trace }}\n"
+
+- name: Publish raw socket token
+  ansible.builtin.copy:
+    dest: /var/www/html/flags/raw.txt
+    mode: '0644'
+    content: "{{ flag_m8_raw }}\n"
+
+- name: Publish server landing page
+  ansible.builtin.copy:
+    dest: /var/www/html/index.html
+    mode: '0644'
+    content: |
+      <html><body><h1>Network Security TP target</h1>
+      <p>Authorized isolated training environment.</p>
+      <p>Mission 3 token: /flags/spoof.txt</p>
+      <p>Mission 4 token: /flags/trace.txt</p>
+      <p>Mission 8 token: /flags/raw.txt</p>
+      </body></html>
+
+- name: Enable server services
+  ansible.builtin.service:
+    name: "{{ item }}"
+    state: started
+    enabled: true
+  loop:
+    - ssh
+    - nginx

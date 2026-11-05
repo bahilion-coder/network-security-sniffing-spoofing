@@ -1,0 +1,104 @@
+---
+- name: Install client traffic tools
+  ansible.builtin.apt:
+    name:
+      - python3-scapy
+      - python3
+      - telnet
+      - openssh-server
+      - sudo
+    state: present
+
+- name: Create student client account
+  ansible.builtin.user:
+    name: student
+    password: "{{ 'StudentLab2026!' | password_hash('sha512') }}"
+    groups: ''
+    append: false
+    shell: /bin/bash
+    create_home: true
+
+- name: Create traffic generator directory
+  ansible.builtin.file:
+    path: /opt/netsec-lab
+    state: directory
+    mode: '0755'
+
+- name: Install Scapy ICMP generator
+  ansible.builtin.copy:
+    dest: /opt/netsec-lab/send-icmp.py
+    mode: '0755'
+    content: |
+      #!/usr/bin/env python3
+      import sys
+      from scapy.all import IP, ICMP, Raw, send
+      dst, payload = sys.argv[1], sys.argv[2]
+      send(IP(dst=dst)/ICMP(type=8)/Raw(load=payload.encode()), verbose=False)
+      print('ICMP Echo Request sent to', dst)
+
+- name: Install TCP marker generator
+  ansible.builtin.copy:
+    dest: /opt/netsec-lab/send-tcp.py
+    mode: '0755'
+    content: |
+      #!/usr/bin/env python3
+      import socket, sys
+      host, port, payload = sys.argv[1], int(sys.argv[2]), sys.argv[3]
+      with socket.create_connection((host, port), timeout=5) as s:
+          s.sendall(payload.encode())
+          print(s.recv(1024).decode(errors='replace').strip())
+
+- name: Install UDP marker generator
+  ansible.builtin.copy:
+    dest: /opt/netsec-lab/send-udp.py
+    mode: '0755'
+    content: |
+      #!/usr/bin/env python3
+      import socket, sys
+      host, port, payload = sys.argv[1], int(sys.argv[2]), sys.argv[3]
+      s=socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+      s.sendto(payload.encode(), (host, port))
+      print('UDP datagram sent to', host, port)
+
+- name: Install unique UDP marker value
+  ansible.builtin.copy:
+    dest: /opt/netsec-lab/udp-marker.txt
+    mode: '0644'
+    content: "PCAP-LAB:{{ flag_m6_pcap }}\n"
+
+- name: Enable SSH for controlled traffic generation
+  ansible.builtin.service:
+    name: ssh
+    state: started
+    enabled: true
+
+- name: Install root-only individualized traffic generators
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/opt/netsec-lab/{{ item }}"
+    owner: root
+    group: root
+    mode: '0700'
+  loop:
+    - generate-icmp.sh
+    - generate-tcp.sh
+    - generate-udp.sh
+    - generate-telnet.sh
+    - generate-spoof-test.sh
+
+- name: Allow only the controlled traffic generators through sudo
+  ansible.builtin.copy:
+    dest: /etc/sudoers.d/netsec-lab
+    mode: '0440'
+    content: |
+      student ALL=(root) NOPASSWD: /opt/netsec-lab/generate-icmp.sh, /opt/netsec-lab/generate-tcp.sh, /opt/netsec-lab/generate-udp.sh, /opt/netsec-lab/generate-telnet.sh, /opt/netsec-lab/generate-spoof-test.sh
+  validate: /usr/sbin/visudo -cf %s
+
+- name: Enable password SSH authentication for the controlled client account
+  ansible.builtin.copy:
+    dest: /etc/ssh/sshd_config.d/99-netsec-lab.conf
+    mode: '0644'
+    content: |
+      PasswordAuthentication yes
+      KbdInteractiveAuthentication no
+  notify: Restart client SSH

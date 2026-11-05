@@ -1,0 +1,23 @@
+---
+- name: Refresh apt metadata
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Install baseline networking utilities
+  ansible.builtin.apt:
+    name:
+      - iproute2
+      - iputils-ping
+      - traceroute
+      - tcpdump
+      - net-tools
+      - curl
+      - wget
+      - dnsutils
+      - nmap
+      - netcat-openbsd
+      - python3
+      - python3-pip
+      - openssh-server
+    state: present

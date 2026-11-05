@@ -1,0 +1,27 @@
+# CyberRangeCZ Automatic Problem Generation variables.
+# These values are generated per sandbox and injected into Ansible provisioning.
+# Keep the variable names identical to answer_variable_name in training.json.
+flag_m1_icmp:
+  type: password
+  length: 12
+flag_m2_tcp:
+  type: password
+  length: 12
+flag_m3_spoof:
+  type: password
+  length: 12
+flag_m4_trace:
+  type: password
+  length: 12
+flag_m5_sniff_spoof:
+  type: password
+  length: 12
+flag_m6_pcap:
+  type: password
+  length: 12
+flag_m7_telnet:
+  type: password
+  length: 12
+flag_m8_raw:
+  type: password
+  length: 12

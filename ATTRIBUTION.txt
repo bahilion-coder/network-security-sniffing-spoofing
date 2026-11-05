@@ -1,0 +1,20 @@
+This scenario is adapted from two sources:
+
+1. Library Junior Hacker CyberRangeCZ scenario template
+   Repository supplied by the user as library-junior-hacker-master.zip.
+   The template identifies its code as MIT-licensed and its game design as
+   Creative Commons Attribution 4.0 International (CC BY 4.0). The original
+   template attribution to Masaryk University's Cybersecurity Laboratory and
+   the junior-hacker training project is retained in LICENSE and README.md.
+
+2. SEED Labs – Packet Sniffing and Spoofing Lab
+   Copyright (C) 2006–2020 Wenliang Du.
+   https://seedsecuritylabs.org/labsetup.html
+   License: Creative Commons Attribution-NonCommercial-ShareAlike 4.0
+   International (CC BY-NC-SA 4.0).
+
+The SEED-derived educational task concepts and adaptations in this scenario
+retain the SEED attribution and applicable CC BY-NC-SA 4.0 conditions. The
+combined package contains components with different licenses; consult README.md
+and LICENSE before redistribution. The SEED copyright notice must be retained
+when redistributing SEED-derived adaptations.

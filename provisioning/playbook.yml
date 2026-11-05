@@ -1,0 +1,30 @@
+---
+- name: Install common network security lab dependencies
+  hosts: hosts
+  become: true
+  roles:
+    - common
+
+- name: Configure student workstation (SEED Ubuntu 20.04)
+  hosts: attacker
+  become: true
+  roles:
+    - attacker
+
+- name: Configure traffic-generation client
+  hosts: client
+  become: true
+  roles:
+    - client
+
+- name: Configure target server
+  hosts: server
+  become: true
+  roles:
+    - server
+
+- name: Configure router forwarding
+  hosts: routers
+  become: true
+  roles:
+    - router

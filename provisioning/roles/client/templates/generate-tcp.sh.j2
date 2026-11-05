@@ -1,0 +1,7 @@
+#!/bin/bash
+exec /usr/bin/python3 - <<'PYCODE'
+import socket
+with socket.create_connection(('10.9.0.5',40444),timeout=5) as s:
+    s.sendall(b'TCP-LAB:{{ flag_m2_tcp }}')
+    print(s.recv(100).decode(errors='replace').strip())
+PYCODE

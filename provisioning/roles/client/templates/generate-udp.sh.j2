@@ -1,0 +1,7 @@
+#!/bin/bash
+exec /usr/bin/python3 - <<'PYCODE'
+import socket
+s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+s.sendto(b'PCAP-LAB:{{ flag_m6_pcap }}',('10.9.0.5',40445))
+print('UDP marker sent')
+PYCODE

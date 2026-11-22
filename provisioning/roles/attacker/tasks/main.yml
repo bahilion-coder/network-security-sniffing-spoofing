@@ -14,8 +14,7 @@
       - telnet
       - inetutils-telnetd
       - openbsd-inetd
-      - socat
-      - sshpass
+      - curl
     state: present
 
 - name: Ensure lab directory exists
@@ -26,13 +25,13 @@
     group: root
     mode: '0755'
 
-- name: Install student helper scripts
+- name: Install fixed HTTP trigger wrappers
   ansible.builtin.template:
     src: "{{ item }}.j2"
     dest: "/opt/netsec-lab/{{ item }}"
     owner: root
     group: root
-    mode: '0700'
+    mode: '0755'
   loop:
     - trigger-client-icmp.sh
     - trigger-client-tcp.sh
@@ -40,15 +39,13 @@
     - trigger-client-telnet.sh
     - trigger-client-spoof-test.sh
 
-
-- name: Permit student account to run only the controlled traffic triggers
+- name: Give the isolated attacker account root privileges for packet labs
   ansible.builtin.copy:
-    dest: /etc/sudoers.d/netsec-trigger-commands
+    dest: /etc/sudoers.d/netsec-student-lab
     owner: root
     group: root
     mode: '0440'
-    content: |
-      user ALL=(root) NOPASSWD: /opt/netsec-lab/trigger-client-icmp.sh, /opt/netsec-lab/trigger-client-tcp.sh, /opt/netsec-lab/trigger-client-udp.sh, /opt/netsec-lab/trigger-client-telnet.sh, /opt/netsec-lab/trigger-client-spoof-test.sh
+    content: "user ALL=(ALL) NOPASSWD: ALL\n"
   validate: /usr/sbin/visudo -cf %s
 
 - name: Install TCP marker listener
@@ -98,25 +95,11 @@
     - netsec-marker
     - openbsd-inetd
 
-- name: Create lab information file
-  ansible.builtin.copy:
-    dest: /opt/netsec-lab/README-student.txt
-    mode: '0644'
-    content: |
-      Network Security TP helper scripts
-      ----------------------------------
-      Run the relevant /opt/netsec-lab/trigger-client-*.sh script to generate
-      controlled traffic from the client. These scripts are provided to make
-      traffic reproducible; they do not replace writing your own sniffer/spoofer.
-      Client access is restricted to the root-owned helper scripts; the SSH credential is generated per sandbox.
-
-- name: Ensure student user exists on attacker
+- name: Ensure student account exists and is password-locked
   ansible.builtin.user:
     name: user
     password: '!'
     password_lock: true
-    groups: sudo
-    append: true
     shell: /bin/bash
 
 - name: Disable kernel ICMP echo replies for the sniff-and-spoof mission

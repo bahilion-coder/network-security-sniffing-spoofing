@@ -1,97 +1,88 @@
-# Game Design – Network Security: Packet Sniffing and Spoofing
+# Game Design — Network Security: Packet Sniffing and Spoofing (v4)
 
 ## 1. Scenario overview
 
-Students act as junior network security analysts investigating traffic in an isolated network. They use the SEED Ubuntu 20.04 workstation to inspect packets, build Scapy programs, write a libpcap sniffer, analyze an intentionally insecure Telnet exchange, and construct a packet using C raw sockets.
+Students act as junior network security analysts investigating controlled traffic in an isolated lab. They use a SEED Ubuntu workstation to capture and filter packets, construct ICMP packets, investigate ARP and local-path behavior, demonstrate sniff-and-spoof, write a C/libpcap sniffer, inspect Telnet plaintext, and construct an IPv4 packet using C raw sockets.
 
-The scenario is adapted from the SEED Labs *Packet Sniffing and Spoofing Lab* (Wenliang Du, 2006–2020) and uses the Library Junior CyberRangeCZ scenario as its structural template.
+Adapted from the SEED Labs *Packet Sniffing and Spoofing Lab* and structured using the CyberRangeCZ Library Junior scenario template.
 
 ## 2. Learning objectives
 
-By the end of the exercise, students should be able to:
-
-1. Identify interfaces, addresses, routes and hosts in a small IPv4 network.
+Students should be able to:
+1. Identify interfaces, IPv4 addresses, routes and hosts.
 2. Capture packets using Scapy and BPF filters.
-3. Explain the effect of root privileges on packet capture and raw sockets.
-4. Construct ICMP packets and verify packet fields.
-5. Explain TTL-based traceroute and ICMP Time Exceeded messages.
-6. Combine sniffing and spoofing in a controlled ICMP demonstration.
-7. Implement a basic packet sniffer using C and libpcap.
+3. Explain root privileges and packet-capture permissions.
+4. Construct and inspect ICMP packets in the isolated network.
+5. Understand ARP and why same-subnet traffic bypasses the router.
+6. Demonstrate sniff-and-spoof in a controlled lab.
+7. Implement a packet sniffer using C/libpcap.
 8. Explain why Telnet exposes credentials in plaintext.
-9. Construct and send an IPv4 packet using C raw sockets and understand byte order.
+9. Construct IPv4 packets with C raw sockets and understand byte order/checksums.
 
 ## 3. Topology
 
 | Node | Role | Address | Image | Flavor |
-|---|---|---:|---|---|
+|---|---|---|---|---|
 | attacker | Student workstation | 10.9.0.5 | SEED Ubuntu 20.04 (custom image) | m1.medium |
-| client | Controlled traffic generator | 10.9.0.6 | Debian 12 | standard.small |
-| server | HTTP token target | 10.9.0.7 | Debian 12 | standard.small |
-| router | Default gateway / Internet egress | 10.9.0.1 | Debian 12 | standard.small |
+| client | Fixed-action traffic generator | 10.9.0.6 | Debian 12 | m1.medium |
+| server | Target host | 10.9.0.7 | Debian 12 | m1.medium |
+| router | Gateway/egress | 10.9.0.1 | Debian 12 | m1.medium |
 
-All nodes are connected to `10.9.0.0/24`. The student works on the attacker. Client-side scripts generate controlled traffic. The target server publishes mission-specific tokens over HTTP. Outbound Internet access is used for the traceroute observation, but no mission flag depends on an external service.
+All hosts are on `10.9.0.0/24`. The attacker, client, and server are on the same subnet; the router is not an intermediate hop for attacker-to-server or client-to-attacker traffic. Therefore, Mission 4 investigates ARP/local path rather than relying on traceroute to a same-subnet destination.
 
-**Deployment configuration:** `seed-ubuntu-20.04` is a proposed OpenStack image identifier and must be replaced with the exact image name registered in the target cloud if different. The management user is set to `seed`, which must match the image's sudo-capable management account. Confirm that `m1.medium` and `standard.small` exist in the target OpenStack environment.
+**Cloud prerequisites:** verify the SEED image identifier `seed-ubuntu-20.04`, management user `seed`, Debian 12 image and management user, and availability of `m1.medium`. All four nodes use `m1.medium` as requested. For 30 students, the topology may require up to 120 VMs; confirm capacity.
 
-## 4. Mission sequence and grading
+## 4. Client traffic generation and privilege model
 
-The platform stores integer points (200 total). The displayed academic grade is calculated as `platform_points / 10`, giving a maximum of 20/20.
+The client has no student SSH account and no SSH credential is stored on attacker. A root-owned HTTP service listens only on `10.9.0.6:8080` and accepts five fixed POST actions: `/icmp`, `/tcp`, `/udp`, `/telnet`, `/spoof-test`. It accepts no shell command, arbitrary input, or payload argument. Attacker-side wrappers call these endpoints.
 
-| Order | Mission | Platform points | Grade equivalent |
-|---:|---|---:|---:|
-| 1 | Scapy ICMP capture | 20 | 2.0 |
-| 2 | TCP/BPF filtering | 25 | 2.5 |
-| 3 | ICMP packet construction and spoofing | 25 | 2.5 |
-| 4 | TTL and traceroute investigation | 20 | 2.0 |
-| 5 | Sniff and spoof an ICMP reply | 25 | 2.5 |
-| 6 | C/libpcap sniffer | 30 | 3.0 |
-| 7 | Telnet traffic inspection | 25 | 2.5 |
-| 8 | C raw sockets | 30 | 3.0 |
-| **Total** | | **200** | **20.0** |
+Students have root privileges on the isolated attacker VM only, because packet capture, Scapy and raw sockets require elevated privileges. This grants control of their own attacker workstation, but the client/server credentials and answer files are not stored there. The trigger endpoint must remain isolated from any external network.
 
-Each mission has three progressive hints. The intended penalties are 0.5, 1.0 and 2.0 academic points, represented internally as 5, 10 and 20 integer platform points. Penalties should be cumulative if the platform applies each requested hint cumulatively. The final score cannot fall below zero.
+## 5. Mission flow
 
-## 5. Automatic Problem Generation
+| Mission | Activity | Assessment | Points |
+|---|---|---|---:|
+| 1 | Scapy ICMP capture | APG marker | 2/20 |
+| 2 | TCP/BPF filtering | APG marker | 2.5/20 |
+| 3 | Construct an ICMP packet | Manual source + PCAP | 2.5/20 |
+| 4 | ARP and same-subnet path investigation | Manual capture + explanation | 2/20 |
+| 5 | Sniff and spoof ICMP reply | Manual source + PCAP | 2.5/20 |
+| 6 | C/libpcap sniffer | APG marker | 3/20 |
+| 7 | Telnet plaintext investigation | APG marker | 2.5/20 |
+| 8 | C raw-socket packet | Manual source + PCAP | 3/20 |
+| **Total** | | | **20/20** |
 
-The sandbox definition includes `variables.yml` with eight generated password-type values. Each training level enables Variant Answers and references the corresponding variable name. The same generated values are inserted during Ansible provisioning into the controlled traffic payloads, Telnet login, or server token files.
+Automatic missions (M1, M2, M6, M7) total 100 platform points = 10 academic points. Manual missions (M3, M4, M5, M8) total 100 rubric points = 10 academic points. Final grade is `(platform points + manual rubric points) / 10`. Manual evidence points are not automatically awarded by the platform; verify the instructor workflow before release.
 
-This provides one unique answer set per sandbox without maintaining 30 separate ZIP archives. CyberRangeCZ must be configured to generate variant sandboxes for the training instance. The exact APG behavior must be verified in a test pool before assigning students.
+Automatic hints have penalties 2, 4, and 6 platform points (0.2, 0.4, and 0.6 academic points). Confirm cumulative behavior and score floor in the platform.
 
-## 6. Traffic generation and visibility
+## 6. APG variables
 
-Traffic is intentionally sent to the attacker interface so that it is observable without depending on promiscuous-mode visibility of unrelated unicast traffic on a virtual switch. The client helper scripts are root-owned and only specific commands are allowed through sudo. They generate ICMP, TCP, UDP and Telnet traffic with sandbox-specific markers.
+Four APG variables are used for the automatic missions: `flag_m1_icmp`, `flag_m2_tcp`, `flag_m6_pcap`, and `flag_m7_telnet`. They are injected into fixed traffic payloads or the Telnet test password. Templates use base64 encoding before insertion into Python strings. No answer files are created on the client.
 
-The attacker is configured to ignore kernel ICMP Echo Requests so that students can demonstrate a user-space Scapy Echo Reply in Mission 5. Restore the normal setting after the exercise if the image is reused outside this scenario.
+## 7. Instructor validation
 
-## 7. Instructor validation checklist
+- Confirm images, management usernames, and flavor availability.
+- Deploy one sandbox and verify all provisioning.
+- Verify the client trigger service is bound to the lab IP and each fixed action works.
+- Verify markers are visible in captures and APG answers validate.
+- Verify Telnet daemon and plaintext test session.
+- Verify Scapy, tcpdump, tshark/Wireshark, GCC, and libpcap.
+- Verify all manual missions can be performed and graded.
+- Deploy two sandboxes and confirm automatic answers differ and validate independently.
+- Confirm hint and manual-score workflow.
 
-Before opening the training to students:
+## 8. Supplementary report questions
 
-- Confirm the SEED image identifier and management user in OpenStack.
-- Confirm `m1.medium` and `standard.small` are available.
-- Deploy one sandbox and verify all Ansible roles complete successfully.
-- Confirm the attacker can reach `10.9.0.6`, `10.9.0.7` and the Internet.
-- Run all five `/opt/netsec-lab/trigger-client-*.sh` scripts from the attacker.
-- Confirm Scapy/tcpdump can capture the generated ICMP, TCP, UDP and Telnet traffic.
-- Confirm the server token URLs return the expected sandbox-specific values.
-- Confirm the Telnet service is listening on TCP/23 and the test login is visible in a packet capture.
-- Confirm libpcap headers and `gcc -lpcap` are available.
-- Deploy two APG sandboxes and confirm that all eight flag values differ and validate independently.
-- Confirm the platform accepts integer hint penalties and the instructor applies the /10 grade conversion.
+1. Describe essential libpcap calls in a sniffer.
+2. Why are elevated privileges required for packet capture?
+3. Explain promiscuous vs non-promiscuous capture in switched virtual networks.
+4. Can IPv4 total length be set independently of transmitted buffer length? Explain observed behavior.
+5. For `IPPROTO_RAW`, what checksum work does the kernel perform, and what must the programmer calculate in other raw-socket modes?
+6. Why do raw sockets require elevated privileges, and which system call reports failure?
 
-## 8. Written report questions
-
-The following conceptual questions are supplementary and do not add points to the 20-point practical grade:
-
-1. Describe the essential library calls in a libpcap sniffer.
-2. Why are elevated privileges required for packet capture, and where does an unprivileged program fail?
-3. Explain the difference between promiscuous and non-promiscuous capture in a switched virtual network.
-4. Can the IPv4 total-length field be set independently of the actual transmitted buffer length? Explain the observed behavior.
-5. For `IPPROTO_RAW`, what checksum work is performed by the kernel and what must the programmer calculate for other raw-socket modes?
-6. Why do raw sockets require elevated privileges, and which system call reports the failure?
-
-Students submit screenshots, source code, and explanations of observations. Merely attaching code without explanation is insufficient.
+These questions are supplementary and do not add points to the practical score.
 
 ## 9. Safety boundary
 
-All packet generation and spoofing must remain inside the isolated lab subnet. The exercise does not ask students to spoof traffic toward public Internet hosts, capture third-party credentials, or attack systems outside their sandbox.
+All packet generation and spoofing must remain inside the isolated lab subnet. Do not target public systems, capture third-party credentials, or perform actions outside the sandbox.

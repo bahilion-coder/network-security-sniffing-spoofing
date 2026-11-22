@@ -1,0 +1,51 @@
+#!/usr/bin/env python3
+"""Lab-only fixed action HTTP trigger. It accepts no shell commands or user data."""
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from scapy.all import IP, ICMP, Raw, send
+import socket, time, base64
+
+def apg_value(encoded):
+    return base64.b64decode(encoded).decode('utf-8')
+
+ATTACKER='10.9.0.5'
+
+class Handler(BaseHTTPRequestHandler):
+    def do_POST(self):
+        routes={
+            '/icmp': self.icmp,
+            '/tcp': self.tcp,
+            '/udp': self.udp,
+            '/telnet': self.telnet,
+            '/spoof-test': self.spoof_test,
+        }
+        action=routes.get(self.path)
+        if action is None:
+            self.send_response(404); self.end_headers(); return
+        try:
+            action()
+            self.send_response(200); self.end_headers(); self.wfile.write(b'OK\n')
+        except Exception as e:
+            self.send_response(500); self.end_headers(); self.wfile.write(b'ERROR\n')
+            print('trigger failed:', repr(e), flush=True)
+    def icmp(self):
+        send(IP(dst=ATTACKER)/ICMP(type=8)/Raw(load=('ICMP-LAB:' + apg_value('{{ flag_m1_icmp | b64encode }}')).encode()), verbose=False)
+    def tcp(self):
+        with socket.create_connection((ATTACKER,40444),timeout=5) as s:
+            s.sendall(('TCP-LAB:' + apg_value('{{ flag_m2_tcp | b64encode }}')).encode())
+            s.recv(100)
+    def udp(self):
+        s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+        s.sendto(('PCAP-LAB:' + apg_value('{{ flag_m6_pcap | b64encode }}')).encode(),(ATTACKER,40445))
+        s.close()
+    def telnet(self):
+        s=socket.create_connection((ATTACKER,23),timeout=5)
+        time.sleep(0.4); s.sendall(b'labtelnet\r\n')
+        time.sleep(0.4); s.sendall(( apg_value('{{ flag_m7_telnet | b64encode }}') + '\r\n').encode())
+        time.sleep(0.4); s.close()
+    def spoof_test(self):
+        send(IP(dst=ATTACKER)/ICMP(type=8)/Raw(load=b'SPOOF-TEST:controlled-lab-request'), verbose=False)
+        print('controlled ICMP request sent', flush=True)
+    def log_message(self, fmt, *args):
+        print('%s - %s' % (self.client_address[0], fmt%args), flush=True)
+
+HTTPServer(('10.9.0.6',8080), Handler).serve_forever()

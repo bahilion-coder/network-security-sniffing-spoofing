@@ -1,6 +1,5 @@
-# CyberRangeCZ Automatic Problem Generation variables.
-# These values are generated per sandbox and injected into Ansible provisioning.
-# Keep the variable names identical to answer_variable_name in training.json.
+# Per-sandbox APG values used only for the four automatically validated missions.
+# Password-type generation is retained; payload insertion uses JSON/Python-safe serialization.
 flag_m1_icmp:
   type: password
   length: 12
@@ -13,8 +12,3 @@ flag_m6_pcap:
 flag_m7_telnet:
   type: password
   length: 12
-
-# Per-sandbox client SSH credential used only by root-owned traffic triggers.
-client_ssh_password:
-  type: password
-  length: 20

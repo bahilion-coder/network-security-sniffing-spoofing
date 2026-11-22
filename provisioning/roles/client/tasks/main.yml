@@ -12,7 +12,7 @@
 - name: Create student client account
   ansible.builtin.user:
     name: student
-    password: "{{ 'StudentLab2026!' | password_hash('sha512') }}"
+    password: "{{ client_ssh_password | password_hash('sha512') }}"
     groups: ''
     append: false
     shell: /bin/bash

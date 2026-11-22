@@ -51,16 +51,16 @@ The eight APG variables are password-type random values. They are placed into th
 
 ## Student access
 
-The intended student entry point is the `attacker` node. The training access level expects username `user`. The provisioning creates this account with the password `StudentLab2026!` for the current draft. Change this password or use your institution's approved user-access mechanism before production deployment.
+The intended student entry point is the `attacker` node. The local `user` account is password-locked; use the CyberRangeCZ-provided access mechanism or your instructor's approved credentials. Do not publish or reuse shared credentials. The client SSH password is generated per sandbox through APG and is used only by root-owned helper scripts.
 
 The attacker provides these helper scripts:
 
 ```bash
-/opt/netsec-lab/trigger-client-icmp.sh
-/opt/netsec-lab/trigger-client-tcp.sh
-/opt/netsec-lab/trigger-client-udp.sh
-/opt/netsec-lab/trigger-client-telnet.sh
-/opt/netsec-lab/trigger-client-spoof-test.sh
+sudo /opt/netsec-lab/trigger-client-icmp.sh
+sudo /opt/netsec-lab/trigger-client-tcp.sh
+sudo /opt/netsec-lab/trigger-client-udp.sh
+sudo /opt/netsec-lab/trigger-client-telnet.sh
+sudo /opt/netsec-lab/trigger-client-spoof-test.sh
 ```
 
 The scripts connect to the client over SSH and invoke root-owned traffic generators. The client account `student` has narrowly scoped sudo permission for those generators, not unrestricted sudo access.
@@ -99,3 +99,36 @@ This scenario combines material under different licenses. See `ATTRIBUTION.txt` 
 - CyberRangeCZ sandbox definition: https://docs.platform.cyberrange.cz/user-guide-advanced/sandboxes/sandbox-definition/
 - CyberRangeCZ training overview / APG: https://docs.platform.cyberrange.cz/user-guide-advanced/trainings/trainings-overview/
 - SEED Labs: https://seedsecuritylabs.org/labsetup.html
+
+
+## Corrected draft security changes
+
+- Removed the shared static student/client password from the scenario files.
+- Locked the local attacker account password so the package does not advertise a reusable login password.
+- Added an APG-generated per-sandbox client SSH password used by the root-owned traffic trigger scripts.
+- Removed public HTTP flag/token files from the server web root. Validation values are now stored under `/opt/netsec-lab/flags` with root-only permissions.
+- Updated Mission 3, 4, and 8 instructions to require practical evidence and removed direct `curl` token retrieval instructions.
+- Added explicit evidence expectations (source code, PCAP, and short explanations) to reduce flag-only assessment bypasses.
+
+## Important validation limitation
+
+This corrected draft is **not deployment-ready yet**. Missions 3, 4, and 8 still use APG answer variables in the training definition, but their values are no longer exposed to students through the old public token URLs. The next engineering step is to implement a proper per-mission validation mechanism (e.g., server-side packet validation or evidence-based instructor grading) and verify the exact CyberRangeCZ training-definition schema. Also validate the SEED image identifier, management user, flavors, APG behavior, and provisioning on your platform before student release.
+
+## Pre-deployment test checklist
+
+1. Validate JSON/YAML syntax.
+2. Deploy one sandbox only.
+3. Verify attacker access through the platform.
+4. Verify Scapy, GCC, libpcap, tcpdump, tshark/Wireshark, and Telnet packages.
+5. Verify client helper triggers work with the per-sandbox SSH credential.
+6. Verify the Telnet service and capture.
+7. Complete all missions and check score/hint behavior.
+8. Deploy a second sandbox and verify generated APG values differ.
+9. Do not scale to a 30-student class until resource capacity and all tests pass.
+
+
+## Important validation/security notes (v3)
+- The attacker-side trigger scripts are root-owned and mode `0700`; students invoke them through narrowly scoped sudo permissions. This prevents reading the embedded per-sandbox SSH credential from the trigger scripts.
+- Missions 3, 4, 5, and 8 are instructor-reviewed evidence missions, not auto-flag levels. See `INSTRUCTOR-GRADING.md`. Confirm the platform's manual score workflow before release.
+- Mission 4 uses only the isolated lab target, not an Internet destination.
+- Do not deploy until image IDs, management usernames, flavors, access method, and all provisioning/runtime behavior are verified.

@@ -32,13 +32,24 @@
     dest: "/opt/netsec-lab/{{ item }}"
     owner: root
     group: root
-    mode: '0755'
+    mode: '0700'
   loop:
     - trigger-client-icmp.sh
     - trigger-client-tcp.sh
     - trigger-client-udp.sh
     - trigger-client-telnet.sh
     - trigger-client-spoof-test.sh
+
+
+- name: Permit student account to run only the controlled traffic triggers
+  ansible.builtin.copy:
+    dest: /etc/sudoers.d/netsec-trigger-commands
+    owner: root
+    group: root
+    mode: '0440'
+    content: |
+      user ALL=(root) NOPASSWD: /opt/netsec-lab/trigger-client-icmp.sh, /opt/netsec-lab/trigger-client-tcp.sh, /opt/netsec-lab/trigger-client-udp.sh, /opt/netsec-lab/trigger-client-telnet.sh, /opt/netsec-lab/trigger-client-spoof-test.sh
+  validate: /usr/sbin/visudo -cf %s
 
 - name: Install TCP marker listener
   ansible.builtin.template:
@@ -97,12 +108,13 @@
       Run the relevant /opt/netsec-lab/trigger-client-*.sh script to generate
       controlled traffic from the client. These scripts are provided to make
       traffic reproducible; they do not replace writing your own sniffer/spoofer.
-      Client access: ssh student@10.9.0.6 (password: StudentLab2026!)
+      Client access is restricted to the root-owned helper scripts; the SSH credential is generated per sandbox.
 
 - name: Ensure student user exists on attacker
   ansible.builtin.user:
     name: user
-    password: "{{ 'StudentLab2026!' | password_hash('sha512') }}"
+    password: '!'
+    password_lock: true
     groups: sudo
     append: true
     shell: /bin/bash

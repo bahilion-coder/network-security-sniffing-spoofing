@@ -1,6 +1,6 @@
 #!/bin/bash
 exec /usr/bin/python3 - <<'PYCODE'
 from scapy.all import IP, ICMP, Raw, send
-send(IP(dst='10.9.0.5')/ICMP(type=8)/Raw(load=b'SPOOF-TEST:{{ flag_m5_sniff_spoof }}'), verbose=False)
+send(IP(dst='10.9.0.5')/ICMP(type=8)/Raw(load=b'SPOOF-TEST:controlled-lab-request'), verbose=False)
 print('ICMP test request sent.')
 PYCODE

@@ -7,21 +7,14 @@ flag_m1_icmp:
 flag_m2_tcp:
   type: password
   length: 12
-flag_m3_spoof:
-  type: password
-  length: 12
-flag_m4_trace:
-  type: password
-  length: 12
-flag_m5_sniff_spoof:
-  type: password
-  length: 12
 flag_m6_pcap:
   type: password
   length: 12
 flag_m7_telnet:
   type: password
   length: 12
-flag_m8_raw:
+
+# Per-sandbox client SSH credential used only by root-owned traffic triggers.
+client_ssh_password:
   type: password
-  length: 12
+  length: 20

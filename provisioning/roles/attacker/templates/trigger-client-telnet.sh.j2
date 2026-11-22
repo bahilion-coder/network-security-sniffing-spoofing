@@ -1,3 +1,3 @@
 #!/bin/bash
 set -euo pipefail
-sshpass -p 'StudentLab2026!' ssh -o StrictHostKeyChecking=no student@10.9.0.6 'sudo /opt/netsec-lab/generate-telnet.sh'
+sshpass -p '{{ client_ssh_password }}' ssh -o StrictHostKeyChecking=no student@10.9.0.6 'sudo /opt/netsec-lab/generate-telnet.sh'

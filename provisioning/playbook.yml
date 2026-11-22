@@ -1,30 +1,30 @@
 ---
-- name: Install common network security lab dependencies
-  hosts: hosts
-  become: true
-  roles:
-    - common
-
-- name: Configure student workstation (SEED Ubuntu 20.04)
+# The attacker comes first: it generates the key that the client authorizes (lab-trigger).
+- name: Configure attacker
   hosts: attacker
   become: true
   roles:
-    - attacker
+    - role: user-access
+      user_access_username: seed
+      user_access_password: dees
+      user_access_sudo: True   # the student needs root for sniffing / spoofing; no secret lives here
+    - role: chrony
+    - role: attacker
 
-- name: Configure traffic-generation client
+- name: Configure client
   hosts: client
   become: true
   roles:
-    - client
+    - role: client
 
-- name: Configure target server
+- name: Configure server
   hosts: server
   become: true
   roles:
-    - server
+    - role: server
 
-- name: Configure router forwarding
-  hosts: routers
+- name: Configure router
+  hosts: router
   become: true
   roles:
-    - router
+    - role: router

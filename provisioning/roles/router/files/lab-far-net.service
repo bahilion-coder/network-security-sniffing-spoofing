@@ -1,0 +1,12 @@
+[Unit]
+Description=Simulated remote path behind the router (traceroute task)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/lab-far-net
+
+[Install]
+WantedBy=multi-user.target

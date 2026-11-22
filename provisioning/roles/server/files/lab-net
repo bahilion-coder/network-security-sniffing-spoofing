@@ -1,0 +1,19 @@
+#!/bin/bash
+# server network preparation (run at boot by lab-net.service).
+#  * the kernel does not answer ICMP echo requests: responder.py does (it decides what to answer)
+#  * relaxed reverse-path filtering
+#  * traffic mirroring to the attacker (see the client's lab-net)
+set -u
+ME=10.1.26.12
+ATT=10.1.26.10
+IFACE=""
+for _ in $(seq 1 60); do
+    IFACE=$(ip -o -4 addr show | awk -v ip="$ME/" 'index($4, ip)==1 {print $2; exit}')
+    [ -n "$IFACE" ] && break
+    sleep 2
+done
+[ -n "$IFACE" ] || { echo "lab-net: lab interface not found" >&2; exit 1; }
+sysctl -qw net.ipv4.icmp_echo_ignore_all=1 net.ipv4.conf.all.rp_filter=0 net.ipv4.conf.default.rp_filter=0 "net.ipv4.conf.${IFACE}.rp_filter=0"
+iptables -t mangle -D POSTROUTING -o "$IFACE" ! -d "$ATT" -j TEE --gateway "$ATT" 2>/dev/null || true
+iptables -t mangle -A POSTROUTING -o "$IFACE" ! -d "$ATT" -j TEE --gateway "$ATT"
+echo "lab-net: interface $IFACE, mirroring to $ATT enabled"

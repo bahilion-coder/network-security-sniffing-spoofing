@@ -1,55 +1,100 @@
 ---
-- name: Install client traffic tools
-  ansible.builtin.apt:
-    name:
-      - python3
-      - python3-scapy
-      - telnet
+# Client: "user machine" that generates the traffic of the missions.
+# Student access: ONLY through "lab-trigger <id>" on the attacker (SSH forced command, whitelist).
+- name: Install packages
+  apt:
+    name: [python3-scapy, iputils-ping, iproute2, iptables, sudo, openssh-server]
     state: present
+    update_cache: yes
+  environment:
+    DEBIAN_FRONTEND: noninteractive
 
-- name: Create lab service directory
-  ansible.builtin.file:
-    path: /opt/netsec-lab
+- name: Lab directories
+  file:
+    path: "{{ item.path }}"
     state: directory
     owner: root
     group: root
-    mode: '0755'
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: /opt/lab, mode: "0755" }
+    - { path: /opt/lab/secrets, mode: "0700" }
 
-- name: Install fixed-action traffic trigger service
-  ansible.builtin.template:
-    src: trigger-service.py.j2
-    dest: /opt/netsec-lab/trigger-service.py
+# One file per APG variable; values come from the platform (variables.yml), one set per sandbox.
+- name: Write the secrets of this sandbox
+  copy:
+    content: "{{ item.value }}\n"
+    dest: "/opt/lab/secrets/{{ item.name }}"
     owner: root
     group: root
-    mode: '0700'
+    mode: "0600"
+  loop:
+    - { name: m1, value: "{{ flag_m1_icmp }}" }
+    - { name: m2, value: "{{ flag_m2_tcp }}" }
+    - { name: m5, value: "{{ flag_m5_sniffspoof }}" }
+    - { name: m6, value: "{{ flag_m6_pcap }}" }
+    - { name: m7, value: "{{ flag_m7_telnet }}" }
+  loop_control:
+    label: "{{ item.name }}"
+  no_log: true
 
-- name: Install trigger service unit
-  ansible.builtin.copy:
-    dest: /etc/systemd/system/netsec-trigger.service
+- name: Scripts
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
     owner: root
     group: root
-    mode: '0644'
-    content: |
-      [Unit]
-      Description=Network Security TP fixed traffic generator
-      After=network.target
-      [Service]
-      Type=simple
-      User=root
-      ExecStart=/usr/bin/python3 /opt/netsec-lab/trigger-service.py
-      Restart=on-failure
-      [Install]
-      WantedBy=multi-user.target
+    mode: "{{ item.mode }}"
+  loop:
+    - { src: gen.py, dest: /opt/lab/gen.py, mode: "0750" }
+    - { src: lab-net, dest: /usr/local/sbin/lab-net, mode: "0755" }
+    - { src: lab-gen-wrapper, dest: /usr/local/sbin/lab-gen-wrapper, mode: "0755" }
 
-- name: Enable fixed-action trigger service
-  ansible.builtin.systemd:
-    name: netsec-trigger
-    enabled: true
-    state: started
-    daemon_reload: true
+- name: User that receives the student's trigger requests
+  user:
+    name: labtrigger
+    shell: /bin/bash
+    create_home: yes
+    password_lock: yes
 
-- name: Ensure student SSH account is not configured
-  ansible.builtin.user:
-    name: student
-    state: absent
-    remove: true
+- name: SSH directory of labtrigger
+  file:
+    path: /home/labtrigger/.ssh
+    state: directory
+    owner: labtrigger
+    group: labtrigger
+    mode: "0700"
+
+- name: Authorize the trigger key for the forced command only
+  copy:
+    content: >-
+      command="/usr/local/sbin/lab-gen-wrapper",no-port-forwarding,no-X11-forwarding,no-agent-forwarding,no-pty
+      {{ hostvars['attacker'].lab_trigger_pubkey }}
+    dest: /home/labtrigger/.ssh/authorized_keys
+    owner: labtrigger
+    group: labtrigger
+    mode: "0600"
+
+- name: labtrigger may run the generator as root (and nothing else)
+  copy:
+    content: "labtrigger ALL=(root) NOPASSWD: /opt/lab/gen.py\n"
+    dest: /etc/sudoers.d/labtrigger
+    owner: root
+    group: root
+    mode: "0440"
+    validate: "visudo -cf %s"
+
+- name: systemd units
+  copy:
+    src: "{{ item }}"
+    dest: "/etc/systemd/system/{{ item }}"
+    mode: "0644"
+  loop: [lab-net.service, lab-noise.service]
+
+- name: Enable and start the services
+  systemd:
+    name: "{{ item }}"
+    daemon_reload: yes
+    enabled: yes
+    state: restarted
+  loop: [lab-net, lab-noise, ssh]

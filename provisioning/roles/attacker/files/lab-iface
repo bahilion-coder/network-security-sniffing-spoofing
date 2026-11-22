@@ -1,0 +1,5 @@
+#!/bin/bash
+# Print the name of the network interface connected to the lab LAN (10.1.26.0/24).
+# The name differs between clouds (ens4, enp0s8, eth1 ...), so use this instead of guessing:
+#     sniff(iface=...)   /   pcap_open_live("<name>", ...)
+ip -o -4 addr show | awk 'index($4, "10.1.26.10/")==1 {print $2; exit}'

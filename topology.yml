@@ -1,9 +1,8 @@
-name: network-security-sniffing-spoofing
+name: seed-sniffing-spoofing-lab
 
 hosts:
   - name: attacker
     base_box:
-      # Confirm the exact image name and management username in OpenStack.
       image: seed
       mgmt_user: ubuntu
     flavor: m1.medium
@@ -21,7 +20,7 @@ hosts:
     flavor: m1.medium
 
 routers:
-  - name: lab-router
+  - name: router
     base_box:
       image: debian-12-x86_64
       mgmt_user: debian
@@ -33,23 +32,22 @@ wan:
 
 networks:
   - name: lab-switch
-    cidr: 10.9.0.0/24
-    accessible_by_user: true
+    cidr: 10.1.26.0/24
 
 net_mappings:
   - host: attacker
     network: lab-switch
-    ip: 10.9.0.5
+    ip: 10.1.26.10
   - host: client
     network: lab-switch
-    ip: 10.9.0.6
+    ip: 10.1.26.11
   - host: server
     network: lab-switch
-    ip: 10.9.0.7
+    ip: 10.1.26.12
 
 router_mappings:
-  - router: lab-router
+  - router: router
     network: lab-switch
-    ip: 10.9.0.1
+    ip: 10.1.26.1
 
 groups: []

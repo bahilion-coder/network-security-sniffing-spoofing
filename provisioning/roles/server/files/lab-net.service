@@ -1,0 +1,13 @@
+[Unit]
+Description=Lab network preparation (ICMP handling, mirroring)
+After=network-online.target
+Wants=network-online.target
+Before=lab-responder.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/lab-net
+
+[Install]
+WantedBy=multi-user.target

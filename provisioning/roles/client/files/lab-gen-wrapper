@@ -1,0 +1,4 @@
+#!/bin/bash
+# SSH forced command of user "labtrigger": the only thing the student can run on hostA.
+# SSH_ORIGINAL_COMMAND is passed as ONE argument; gen.py validates it against a fixed whitelist.
+exec sudo -n /opt/lab/gen.py "${SSH_ORIGINAL_COMMAND:-list}"

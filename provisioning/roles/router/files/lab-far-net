@@ -1,0 +1,50 @@
+#!/bin/bash
+# Simulated remote network behind the router, used by Mission 4 (traceroute).
+#
+#   attacker -> router(10.1.26.1) -> hop2(172.31.1.2) -> hop3(172.31.2.2) -> far(172.31.3.2)
+#               hop 1                 hop 2               hop 3               hop 4 = destination
+#
+# hop2/hop3 are network namespaces that forward packets (so TTL expires there and they send
+# ICMP "time exceeded" from their own address); "far" is the destination host.
+set -eu
+
+sysctl -qw net.ipv4.ip_forward=1 net.ipv4.icmp_ratelimit=0
+
+for ns in far hop3 hop2; do ip netns del "$ns" 2>/dev/null || true; done
+ip link del lab-r2 2>/dev/null || true
+
+for ns in hop2 hop3 far; do
+    ip netns add "$ns"
+    ip netns exec "$ns" ip link set lo up
+    ip netns exec "$ns" sysctl -qw net.ipv4.ip_forward=1 net.ipv4.icmp_ratelimit=0 \
+        net.ipv4.conf.all.rp_filter=0 net.ipv4.conf.default.rp_filter=0
+done
+# the destination is a host, not a router, and it answers echo requests itself (far_responder.py)
+ip netns exec far sysctl -qw net.ipv4.ip_forward=0 net.ipv4.icmp_echo_ignore_all=1
+
+# router <-> hop2
+ip link add lab-r2 type veth peer name lab-2r netns hop2
+ip addr add 172.31.1.1/30 dev lab-r2 && ip link set lab-r2 up
+ip netns exec hop2 ip addr add 172.31.1.2/30 dev lab-2r
+ip netns exec hop2 ip link set lab-2r up
+# hop2 <-> hop3
+ip link add lab-23 netns hop2 type veth peer name lab-32 netns hop3
+ip netns exec hop2 ip addr add 172.31.2.1/30 dev lab-23
+ip netns exec hop2 ip link set lab-23 up
+ip netns exec hop3 ip addr add 172.31.2.2/30 dev lab-32
+ip netns exec hop3 ip link set lab-32 up
+# hop3 <-> far
+ip link add lab-3f netns hop3 type veth peer name lab-f3 netns far
+ip netns exec hop3 ip addr add 172.31.3.1/30 dev lab-3f
+ip netns exec hop3 ip link set lab-3f up
+ip netns exec far ip addr add 172.31.3.2/30 dev lab-f3
+ip netns exec far ip link set lab-f3 up
+
+# routing
+ip route replace 172.31.2.0/30 via 172.31.1.2
+ip route replace 172.31.3.0/30 via 172.31.1.2
+ip netns exec hop2 ip route add default via 172.31.1.1
+ip netns exec hop2 ip route add 172.31.3.0/30 via 172.31.2.2
+ip netns exec hop3 ip route add default via 172.31.2.1
+ip netns exec far ip route add default via 172.31.3.1
+echo "lab-far-net: simulated path to 172.31.3.2 ready"

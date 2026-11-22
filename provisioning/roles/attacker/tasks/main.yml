@@ -1,110 +1,113 @@
 ---
-- name: Install SEED workstation tools and development libraries
-  ansible.builtin.apt:
+# SEED Ubuntu 20.04 VM: the student machine.
+- name: Add host aliases to /etc/hosts
+  lineinfile:
+    path: /etc/hosts
+    line: "{{ item.ip }} {{ item.name }}"
+  loop:
+    - { ip: 10.1.26.11, name: client }
+    - { ip: 10.1.26.12, name: server }
+    - { ip: 10.1.26.1, name: router }
+
+# The SEED VM normally ships with most of these; installing is a no-op when they are present.
+- name: Make sure the lab tools are installed
+  apt:
     name:
-      - scapy
       - python3-scapy
+      - tcpdump
+      - wireshark
+      - traceroute
+      - net-tools
+      - iputils-ping
+      - openssh-client
       - gcc
       - make
-      - libc6-dev
       - libpcap-dev
-      - tcpdump
-      - tshark
-      - wireshark
-      - telnet
-      - inetutils-telnetd
-      - openbsd-inetd
-      - curl
     state: present
+    update_cache: yes
+  environment:
+    DEBIAN_FRONTEND: noninteractive
 
-- name: Ensure lab directory exists
-  ansible.builtin.file:
-    path: /opt/netsec-lab
+- name: Lab directories
+  file:
+    path: /opt/lab
     state: directory
     owner: root
     group: root
-    mode: '0755'
+    mode: "0755"
 
-- name: Install fixed HTTP trigger wrappers
-  ansible.builtin.template:
-    src: "{{ item }}.j2"
-    dest: "/opt/netsec-lab/{{ item }}"
-    owner: root
-    group: root
-    mode: '0755'
+- name: Services used by the client (fake Telnet, TCP listeners)
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    mode: "{{ item.mode }}"
   loop:
-    - trigger-client-icmp.sh
-    - trigger-client-tcp.sh
-    - trigger-client-udp.sh
-    - trigger-client-telnet.sh
-    - trigger-client-spoof-test.sh
+    - { src: lab-services.py, dest: /opt/lab/lab-services.py, mode: "0755" }
+    - { src: lab-services.service, dest: /etc/systemd/system/lab-services.service, mode: "0644" }
+    - { src: lab-route.service, dest: /etc/systemd/system/lab-route.service, mode: "0644" }
 
-- name: Give the isolated attacker account root privileges for packet labs
-  ansible.builtin.copy:
-    dest: /etc/sudoers.d/netsec-student-lab
+- name: Install lab helper commands
+  copy:
+    src: "{{ item }}"
+    dest: "/usr/local/bin/{{ item }}"
     owner: root
     group: root
-    mode: '0440'
-    content: "user ALL=(ALL) NOPASSWD: ALL\n"
-  validate: /usr/sbin/visudo -cf %s
+    mode: "0755"
+  loop:
+    - lab-iface
+    - lab-trigger
 
-- name: Install TCP marker listener
-  ansible.builtin.template:
-    src: marker-listener.py.j2
-    dest: /opt/netsec-lab/marker-listener.py
-    owner: root
-    group: root
-    mode: '0755'
+- name: Create the lab directories of the student
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: seed
+    group: seed
+    mode: "0755"
+  loop:
+    - /home/seed/lab
+    - /home/seed/.lab
 
-- name: Install marker listener systemd unit
-  ansible.builtin.copy:
-    dest: /etc/systemd/system/netsec-marker.service
-    mode: '0644'
-    content: |
-      [Unit]
-      Description=Network Security TP marker listener
-      After=network.target
-      [Service]
-      ExecStart=/usr/bin/python3 /opt/netsec-lab/marker-listener.py
-      Restart=always
-      [Install]
-      WantedBy=multi-user.target
+- name: Starter code for the student
+  copy:
+    src: "starter/{{ item }}"
+    dest: "/home/seed/lab/{{ item }}"
+    owner: seed
+    group: seed
+    mode: "0644"
+  loop:
+    - sniffer.py
+    - README.txt
 
-- name: Configure Telnet test account
-  ansible.builtin.user:
-    name: labtelnet
-    password: "{{ flag_m7_telnet | password_hash('sha512') }}"
-    shell: /bin/bash
-    create_home: true
+# Key pair used by lab-trigger. The client only accepts it for the forced command "gen.py <id>":
+# the student may read the private key (he is root on this machine) without gaining anything.
+- name: Generate the trigger SSH key pair
+  command: ssh-keygen -q -t ed25519 -N "" -C labtrigger -f /home/seed/.lab/id_ed25519
+  args:
+    creates: /home/seed/.lab/id_ed25519
 
-- name: Configure inetd Telnet service
-  ansible.builtin.lineinfile:
-    path: /etc/inetd.conf
-    regexp: '^telnet'
-    line: 'telnet stream tcp nowait root /usr/sbin/in.telnetd in.telnetd'
-    create: true
-  notify: Restart inetd
+- name: Fix ownership of the trigger key
+  file:
+    path: /home/seed/.lab/id_ed25519
+    owner: seed
+    group: seed
+    mode: "0600"
 
-- name: Enable marker listener and inetd
-  ansible.builtin.systemd:
+- name: Read the public key
+  slurp:
+    src: /home/seed/.lab/id_ed25519.pub
+  register: lab_trigger_pub
+
+- name: Publish the public key for the client role (hostvars)
+  set_fact:
+    lab_trigger_pubkey: "{{ lab_trigger_pub.content | b64decode | trim }}"
+
+- name: Enable and start the services
+  systemd:
     name: "{{ item }}"
-    enabled: true
-    state: started
-    daemon_reload: true
+    daemon_reload: yes
+    enabled: yes
+    state: restarted
   loop:
-    - netsec-marker
-    - openbsd-inetd
-
-- name: Ensure student account exists and is password-locked
-  ansible.builtin.user:
-    name: user
-    password: '!'
-    password_lock: true
-    shell: /bin/bash
-
-- name: Disable kernel ICMP echo replies for the sniff-and-spoof mission
-  ansible.builtin.sysctl:
-    name: net.ipv4.icmp_echo_ignore_all
-    value: '1'
-    state: present
-    reload: true
+    - lab-services
+    - lab-route

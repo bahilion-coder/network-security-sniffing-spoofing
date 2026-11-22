@@ -1,0 +1,12 @@
+[Unit]
+Description=Route to the simulated remote network behind the router (traceroute task)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh -c 'for i in 1 2 3 4 5 6 7 8 9 10; do ip route replace 172.31.0.0/16 via 10.1.26.1 && exit 0; sleep 3; done; exit 1'
+
+[Install]
+WantedBy=multi-user.target

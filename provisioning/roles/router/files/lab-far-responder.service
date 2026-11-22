@@ -1,0 +1,12 @@
+[Unit]
+Description=Destination host of the simulated path (traceroute task)
+After=lab-far-net.service
+Requires=lab-far-net.service
+
+[Service]
+ExecStart=/usr/sbin/ip netns exec far /opt/lab/far_responder.py
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

@@ -1,5 +1,0 @@
----
-- name: Restart inetd
-  ansible.builtin.service:
-    name: openbsd-inetd
-    state: restarted

@@ -1,0 +1,12 @@
+[Unit]
+Description=Lab background ICMP noise (client -> server)
+After=lab-net.service
+Requires=lab-net.service
+
+[Service]
+ExecStart=/opt/lab/gen.py noise
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

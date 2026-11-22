@@ -1,6 +1,6 @@
 {
-  "title": "Network Security: Packet Sniffing and Spoofing",
-  "description": "A practical SEED-based network security exercise. Platform-validated missions total 100 points (10 academic points); instructor-reviewed evidence missions total 100 points (10 academic points). Final grade is (platform points + manual rubric points)/10. Deployment and grading workflow must be validated before release.",
+  "title": "Packet Sniffing and Spoofing Lab",
+  "description": "Eight automatically graded missions on packet sniffing and spoofing (SEED Labs): Scapy, BPF filters, ICMP spoofing, traceroute, sniff-then-spoof, libpcap, Telnet eavesdropping and C raw sockets. Every sandbox has its own flags.",
   "prerequisites": [
     "Basic Linux command line",
     "Basic TCP/IP knowledge",
@@ -24,7 +24,7 @@
       "order": 0,
       "estimated_duration": 3,
       "minimal_possible_solve_time": null,
-      "content": "# Network Security Practical Challenge\n\nYou are a junior network security analyst investigating suspicious traffic in an isolated training network. Your task is to collect evidence, analyze packet headers and payloads, and build small packet tools.\n\n## Rules\n- Perform all sniffing and spoofing only inside this CyberRange sandbox.\n- Do not target public systems with spoofed packets.\n- Use the supplied traffic-generation scripts when a mission requires reproducible traffic.\n- Submit flags where required and retain practical evidence (commands, source code, packet captures, and short explanations) for instructor review. Flags differ between sandboxes.\n- The practical assessment is 20 points: 10 points from platform-validated missions and 10 points from instructor-reviewed evidence missions. See README.md for scoring and hint penalties.\n\n## Network map\n- Attacker / SEED workstation: `10.9.0.5`\n- Client traffic generator: `10.9.0.6`\n- Target server: `10.9.0.7`\n- Default gateway: `10.9.0.1`\n\nAll hosts are on the isolated `10.9.0.0/24` lab network. The router provides outbound Internet access where available.\n\n## Assessment note\nMissions 3, 4, 5, and 8 require instructor-reviewed evidence and are not automatically validated by flags. Submit the required PCAP/source/report artifacts and use the instructor rubric. The remaining flag-based levels use per-sandbox generated answers."
+      "content": "# Network Security Practical Challenge\n\nYou are a junior network security analyst in an isolated training network. You capture traffic, forge packets and write small network tools. Every mission ends with a **flag** that the lab itself releases, and **flags are different in every sandbox**.\n\n## Rules\n- Do all sniffing and spoofing only inside this sandbox. Never send forged packets to public systems.\n- You work **only on the `attacker` machine** (SEED Ubuntu 20.04). `client`, `server` and `router` are *user machines*: you reach them with packets, never with a shell.\n- Ask the client to generate the traffic of a mission with `lab-trigger <id>` (try `lab-trigger list`).\n- `lab-iface` prints the name of the lab network interface. Sniffing and spoofing need root (`sudo`).\n- In the traffic a flag looks like `FLAG(M1)=<value>`. **Submit only `<value>`.** Traffic that does not belong to the mission carries look-alike values that are wrong.\n\n## Network map (10.1.26.0/24)\n| Machine | Address | Role |\n|---|---|---|\n| attacker | 10.1.26.10 | your SEED workstation |\n| client | 10.1.26.11 | user machine, generates traffic |\n| server | 10.1.26.12 | user machine, answers some packets |\n| router | 10.1.26.1 | gateway to the Internet and to a simulated remote network (172.31.0.0/16) |\n\n## Grading\nThe eight missions are worth **20 points** in total (the platform shows 200 internal points: divide by 10). Hints cost 0.5, 1 and 2 points at most; asking for a solution costs the whole mission. A mission never goes below 0. The concept questions of the lab handout go into your written report and do not change the practical grade."
     },
     {
       "title": "Get access to the SEED workstation",
@@ -33,12 +33,12 @@
       "estimated_duration": 2,
       "minimal_possible_solve_time": null,
       "passkey": "start",
-      "cloud_content": "Open the `attacker` machine using the CyberRange topology GUI or the platform-provided SSH access method. Use the account/access credentials assigned by CyberRangeCZ or your instructor. Do not use shared credentials from documentation. After connecting, submit `start` to continue.\n\nThe attacker is the official SEED Ubuntu 20.04 workstation. The exact OpenStack image identifier must match the image name configured by your instructor.",
+      "cloud_content": "Your first task is to access the sandbox where you will complete all following tasks. After you have connected, submit the answer **`start`**.\n\n### Sandbox access\n1. In the topology overview on the right, right-click on **`attacker`** and choose **Open GUI** (or connect over SSH).\n2. Log in with username **`seed`** and password **`dees`**.\n\nYou work only on `attacker`. Run `lab-trigger list` in a terminal to see the traffic scenarios; starter code and a short reference are in `~/lab`.",
       "local_content": "Cloud sandbox access is required for this scenario.",
       "content": ""
     },
     {
-      "title": "Mission 1 – Capture an ICMP packet with Scapy",
+      "title": "Mission 1 – Sniff ICMP packets with Scapy",
       "level_type": "TRAINING_LEVEL",
       "order": 2,
       "estimated_duration": 12,
@@ -46,27 +46,21 @@
       "answer": null,
       "answer_variable_name": "flag_m1_icmp",
       "variant_answers": true,
-      "content": "## Objective\nCapture an ICMP Echo Request generated by the client and recover its unique payload marker.\n\n1. Identify the attacker interface and its IPv4 address using `ip -br address` and `ip route`.\n2. Start a Scapy sniffer on the interface connected to `10.9.0.0/24`. Filter for ICMP.\n3. In another terminal, run `/opt/netsec-lab/trigger-client-icmp.sh`. This calls the client’s fixed-action HTTP endpoint and generates one controlled Echo Request to the attacker.\n4. Inspect the ICMP payload and extract the value after `ICMP-LAB:`.\n\n**Submit:** the exact individualized marker, without the `ICMP-LAB:` prefix.\n\nThe marker is not stored in a readable file on the client. The client service generates it only in the packet.",
-      "solution": "Run a Scapy program using `sniff(iface=<lab-interface>, filter='icmp', prn=lambda p: p.show())`. Trigger traffic with `sudo /opt/netsec-lab/trigger-client-icmp.sh`. Inspect `Raw.load`; the expected payload has the form `ICMP-LAB:<flag_m1_icmp>`. Submit the suffix. The interface name can be discovered with `ip -br addr`.",
+      "content": "## Objective\nCapture ICMP echo requests with Scapy and find the flag that is addressed **to your machine**.\n\n1. Find the lab interface: `lab-iface`. The starter `~/lab/sniffer.py` already sniffs ICMP.\n2. Run your sniffer as root: `sudo python3 sniffer.py`.\n3. In another terminal run `lab-trigger m1`. The client sends echo requests to several destinations.\n4. Read the `Raw` payload of the right packets: `FLAG(M1)=<value>`.\n\n**Submit:** the value (without `FLAG(M1)=`).",
+      "solution": "Run `sudo python3 sniffer.py` (sniff(iface=lab-iface, filter='icmp and dst host 10.1.26.10', prn=...)), then `lab-trigger m1`. Print `pkt[Raw].load`; the real flag is in the packets sent to 10.1.26.10. Submit the part after `FLAG(M1)=`.",
       "solution_penalized": true,
       "hints": [
         {
-          "title": "Which protocol should you capture?",
-          "content": "The generated packet is an ICMP Echo Request. Start with an ICMP capture filter.",
-          "hint_penalty": 2,
+          "title": "Which packets?",
+          "content": "The client also pings another machine of the lab. Look at the destination address of every packet.",
+          "hint_penalty": 5,
           "order": 0
         },
         {
-          "title": "Which tool should you use?",
-          "content": "Use Scapy's `sniff()` function and inspect each packet's layers and payload.",
-          "hint_penalty": 4,
+          "title": "How to filter",
+          "content": "A BPF filter can keep only the packets addressed to you, e.g. `icmp and dst host 10.1.26.10`.",
+          "hint_penalty": 10,
           "order": 1
-        },
-        {
-          "title": "Where is the marker?",
-          "content": "Run `sudo /opt/netsec-lab/trigger-client-icmp.sh`; inspect the `Raw` payload. Remove the `ICMP-LAB:` prefix before submitting.",
-          "hint_penalty": 6,
-          "order": 2
         }
       ],
       "incorrect_answer_limit": 10,
@@ -78,7 +72,7 @@
       "commands_required": false
     },
     {
-      "title": "Mission 2 – Apply a TCP/BPF filter",
+      "title": "Mission 2 – Filter TCP traffic with BPF",
       "level_type": "TRAINING_LEVEL",
       "order": 3,
       "estimated_duration": 12,
@@ -86,26 +80,26 @@
       "answer": null,
       "answer_variable_name": "flag_m2_tcp",
       "variant_answers": true,
-      "content": "## Objective\nCapture a TCP application payload while filtering traffic by destination port.\n\n1. Start a packet capture on the lab interface using a BPF filter for TCP traffic to destination port `40444`.\n2. Run `/opt/netsec-lab/trigger-client-tcp.sh`.\n3. Follow the TCP stream or inspect the application payload.\n4. Extract the value after `TCP-LAB:`.\n\n**Submit:** the exact individualized marker, without the prefix.\n\nExplain in your lab report why a BPF filter is applied before packets reach the capture callback.",
-      "solution": "Use `tcpdump -ni <interface> 'tcp dst port 40444' -A` or Scapy `sniff(filter='tcp dst port 40444', ...)`. Run `sudo /opt/netsec-lab/trigger-client-tcp.sh`. The TCP payload contains `TCP-LAB:<flag_m2_tcp>`.",
+      "content": "## Objective\nCapture a TCP payload and use a BPF filter to separate it from look-alike traffic.\n\n1. Run `lab-trigger m2` while you sniff. Several streams use different ports and protocols.\n2. Write a filter that keeps **only TCP packets with destination port 40444**.\n3. Read the payload: `FLAG(M2)=<value>`.\n\n**Submit:** the value.\n*Report question: why is a BPF filter applied before packets reach your callback?*",
+      "solution": "`sudo python3 -c \"from scapy.all import *; sniff(iface='<iface>', filter='tcp dst port 40444', prn=lambda p: print(p[Raw].load) if p.haslayer(Raw) else None)\"` while running `lab-trigger m2`. Submit the value after `FLAG(M2)=`.",
       "solution_penalized": true,
       "hints": [
         {
-          "title": "Which transport protocol?",
-          "content": "The generator opens a TCP connection to the attacker workstation.",
-          "hint_penalty": 2,
+          "title": "Which protocol and port?",
+          "content": "TCP, destination port 40444. UDP traffic to the same port is a decoy.",
+          "hint_penalty": 5,
           "order": 0
         },
         {
-          "title": "Which filter expression?",
-          "content": "Use a BPF expression that selects TCP packets whose destination port is 40444.",
-          "hint_penalty": 4,
+          "title": "Filter syntax",
+          "content": "`tcp dst port 40444` (tcpdump / Scapy `filter=`).",
+          "hint_penalty": 10,
           "order": 1
         },
         {
-          "title": "How do you reveal the application data?",
-          "content": "Use ASCII/hex payload output or follow the TCP stream, then extract the suffix after `TCP-LAB:`.",
-          "hint_penalty": 6,
+          "title": "Seeing the data",
+          "content": "Packets with payload have the PSH flag. Print `pkt[Raw].load` or follow the TCP stream in Wireshark.",
+          "hint_penalty": 10,
           "order": 2
         }
       ],
@@ -118,37 +112,115 @@
       "commands_required": false
     },
     {
-      "title": "Mission 3 – Construct and spoof an ICMP packet",
-      "level_type": "INFO_LEVEL",
+      "title": "Mission 3 – Spoof an ICMP echo request",
+      "level_type": "TRAINING_LEVEL",
       "order": 4,
       "estimated_duration": 15,
       "minimal_possible_solve_time": null,
-      "content": "## Objective\nConstruct a controlled IPv4/ICMP Echo Request with Scapy and verify it in a packet capture.\n\n1. Build a packet using source `10.9.0.6` and destination `10.9.0.7`.\n2. Use a clearly labeled lab payload and send only to the lab server.\n3. Capture the packet and verify source/destination, ICMP type, payload, and checksum behavior.\n4. Save your Scapy source and PCAP.\n\n**Instructor-reviewed mission (no flag):** submit source code and a PCAP showing the required fields. Do not use a flag as proof of completion.\n\n### Instructor scoring\nThis mission is scored manually using the rubric in `INSTRUCTOR-GRADING.md`. The training-platform level is informational and does not automatically award points.",
+      "answer": null,
+      "answer_variable_name": "flag_m3_spoof",
+      "variant_answers": true,
+      "content": "## Objective\nForge an ICMP echo request with a **source address you do not own** and prove it worked.\n\n1. With Scapy build `IP(src=<forged>, dst='10.1.26.12') / ICMP()`. The forged source must be **outside** 10.1.26.0/24 (for example `203.0.113.50`).\n2. Send it (as root) and sniff the lab interface.\n3. The server answers a forged request from outside the lab with a reply that carries `FLAG(M3)=<value>`. You can see the reply because the server's traffic is mirrored to your interface.\n\n**Submit:** the value.",
+      "solution": "Run a sniffer with filter `icmp and src host 10.1.26.12`, then `send(IP(src='203.0.113.50', dst='10.1.26.12')/ICMP()/Raw(b'hello'))`. The mirrored reply carries `FLAG(M3)=<value>`.",
+      "solution_penalized": true,
+      "hints": [
+        {
+          "title": "The source address",
+          "content": "Use a source outside 10.1.26.0/24, e.g. 203.0.113.50. The server only answers such packets with the flag.",
+          "hint_penalty": 5,
+          "order": 0
+        },
+        {
+          "title": "Seeing the reply",
+          "content": "The reply is addressed to the forged address. Sniff `icmp and src host 10.1.26.12` while you send.",
+          "hint_penalty": 10,
+          "order": 1
+        },
+        {
+          "title": "Scapy skeleton",
+          "content": "`send(IP(src='203.0.113.50', dst='10.1.26.12')/ICMP())` and `sniff(iface=..., filter='icmp and src host 10.1.26.12')`.",
+          "hint_penalty": 10,
+          "order": 2
+        }
+      ],
+      "incorrect_answer_limit": 10,
       "attachments": [],
+      "max_score": 25,
+      "reference_solution": [],
       "mitre_techniques": [],
       "expected_commands": [],
       "commands_required": false
     },
     {
-      "title": "Mission 4 – Investigate ARP and the local network path",
-      "level_type": "INFO_LEVEL",
+      "title": "Mission 4 – Write a traceroute",
+      "level_type": "TRAINING_LEVEL",
       "order": 5,
-      "estimated_duration": 12,
+      "estimated_duration": 15,
       "minimal_possible_solve_time": null,
-      "content": "## Objective\nInvestigate how traffic reaches a host on the same IPv4 subnet and demonstrate why a router is not an intermediate hop for this path.\n\n1. Identify the attacker interface, IPv4 address, subnet mask, and route table.\n2. Clear or observe the neighbor cache, then ping the server `10.9.0.7`.\n3. Capture ARP request/reply traffic and the ICMP exchange.\n4. Compare the route/neighbor information for the server and the default gateway `10.9.0.1`.\n5. Explain why a traceroute to the same-subnet server does not show the router as an intermediate hop. Do not rely on Internet traceroute or external hosts.\n\n**Instructor-reviewed mission (no flag):** submit a PCAP or screenshots of ARP and ICMP, route/neighbor-table output, and a short explanation.\n\n### Instructor scoring\nThis mission is scored manually using the rubric in `INSTRUCTOR-GRADING.md`. The training-platform level is informational and does not automatically award points.",
+      "answer": null,
+      "answer_variable_name": "flag_m4_trace",
+      "variant_answers": true,
+      "content": "## Objective\nWrite a traceroute with Scapy: send ICMP echo requests with increasing TTL to **172.31.3.2** (a host behind the router) and read the answers.\n\n1. Send one probe per TTL (1, 2, 3, ...) with `sr1(IP(dst='172.31.3.2', ttl=t)/ICMP(), timeout=2)`.\n2. Print the address that answers each probe (ICMP *time exceeded* from every router on the way).\n3. When the destination itself answers, its reply carries `FLAG(M4)=<value>`.\n\n**Submit:** the value.\n*Report question: how many hops are there, and why can you not estimate the distance to the destination from a single reply?*",
+      "solution": "```python\nfor ttl in range(1, 10):\n    r = sr1(IP(dst='172.31.3.2', ttl=ttl)/ICMP(), timeout=2, verbose=False)\n    ...\n```\nHops: 10.1.26.1, 172.31.1.2, 172.31.2.2, then 172.31.3.2 (hop 4) answers with the flag.",
+      "solution_penalized": true,
+      "hints": [
+        {
+          "title": "Which target?",
+          "content": "172.31.3.2. It is reached through the router (10.1.26.1) and two more routers.",
+          "hint_penalty": 5,
+          "order": 0
+        },
+        {
+          "title": "TTL",
+          "content": "Start at TTL 1 and increase by one until the answer comes from 172.31.3.2 itself.",
+          "hint_penalty": 10,
+          "order": 1
+        }
+      ],
+      "incorrect_answer_limit": 10,
       "attachments": [],
+      "max_score": 20,
+      "reference_solution": [],
       "mitre_techniques": [],
       "expected_commands": [],
       "commands_required": false
     },
     {
-      "title": "Mission 5 – Sniff and then spoof an ICMP reply",
-      "level_type": "INFO_LEVEL",
+      "title": "Mission 5 – Sniff and then spoof",
+      "level_type": "TRAINING_LEVEL",
       "order": 6,
       "estimated_duration": 18,
       "minimal_possible_solve_time": null,
-      "content": "## Objective\nCombine packet sniffing and packet construction to demonstrate an ICMP Echo Reply in the isolated sandbox.\n\n1. Run `sudo /opt/netsec-lab/trigger-client-spoof-test.sh` to generate a controlled request to the attacker.\n2. Capture the request and inspect its identifier, sequence number, source, destination, and payload.\n3. Construct the corresponding Echo Reply in Scapy and send it only inside the sandbox.\n4. Capture both request and reply and explain how the reply matches the request.\n\n**Instructor-reviewed mission (no flag):** submit source code and a PCAP that contains the request and your reply. Capturing only the request is insufficient.\n\n### Instructor scoring\nThis mission is scored manually using the rubric in `INSTRUCTOR-GRADING.md`. The training-platform level is informational and does not automatically award points.",
+      "answer": null,
+      "answer_variable_name": "flag_m5_sniffspoof",
+      "variant_answers": true,
+      "content": "## Objective\nWrite a program that sniffs ICMP echo requests and immediately sends **forged echo replies**, so that hosts that do not exist seem to answer.\n\n1. Start your program (as root) on the attacker.\n2. Run `lab-trigger m5`. The client pings three targets: a non-existing Internet host (192.0.2.99), a non-existing LAN host (10.1.26.99) and 8.8.8.8.\n3. When your program answers the pings of the Internet hosts, `lab-trigger m5` prints `FLAG(M5)=<value>`. The result is shown in your terminal.\n\n**Submit:** the value.",
+      "solution": "```python\ndef spoof(p):\n    if p[IP].src=='10.1.26.11' and p[ICMP].type==8 and p[IP].dst!='10.1.26.12':\n        r = IP(src=p[IP].dst, dst=p[IP].src)/ICMP(type=0, id=p[ICMP].id, seq=p[ICMP].seq)\n        if p.haslayer(Raw): r = r/p[Raw].load\n        send(r)\nsniff(iface=IFACE, filter='icmp and icmp[icmptype]==8', prn=spoof)\n```\nThen `lab-trigger m5` prints the flag.",
+      "solution_penalized": true,
+      "hints": [
+        {
+          "title": "Idea",
+          "content": "Sniff `icmp[icmptype]==8` requests coming from the client (10.1.26.11) and build the matching reply.",
+          "hint_penalty": 5,
+          "order": 0
+        },
+        {
+          "title": "The reply",
+          "content": "Swap source and destination, use type 0 (echo reply) and copy `id`, `seq` and the payload from the request.",
+          "hint_penalty": 10,
+          "order": 1
+        },
+        {
+          "title": "Scope",
+          "content": "Answer requests whose source is 10.1.26.11 and whose destination is not the server (10.1.26.12). Run the program before `lab-trigger m5`.",
+          "hint_penalty": 10,
+          "order": 2
+        }
+      ],
+      "incorrect_answer_limit": 10,
       "attachments": [],
+      "max_score": 25,
+      "reference_solution": [],
       "mitre_techniques": [],
       "expected_commands": [],
       "commands_required": false
@@ -162,26 +234,26 @@
       "answer": null,
       "answer_variable_name": "flag_m6_pcap",
       "variant_answers": true,
-      "content": "## Objective\nImplement a basic packet sniffer in C using libpcap.\n\n1. Write a C program that opens the lab interface with `pcap_open_live()`.\n2. Compile and install a BPF filter for UDP destination port `40445`.\n3. Capture packets using `pcap_loop()` and print source IP, destination IP and UDP payload.\n4. Run `/opt/netsec-lab/trigger-client-udp.sh`.\n5. Extract the value after `PCAP-LAB:` from the captured datagram.\n\n**Submit:** the exact individualized marker, without the prefix.\n\nCompile with `gcc sniffer.c -o sniffer -lpcap`. Run with sufficient privileges.",
-      "solution": "Use `pcap_open_live(interface, BUFSIZ, 1, 1000, errbuf)`, compile the BPF expression `udp dst port 40445` with `pcap_compile()`, install it with `pcap_setfilter()`, and capture with `pcap_loop()`. Parse Ethernet/IP/UDP headers and print the payload. Trigger traffic with `sudo /opt/netsec-lab/trigger-client-udp.sh`. The payload is `PCAP-LAB:<flag_m6_pcap>`.",
+      "content": "## Objective\nWrite a sniffer in C with libpcap.\n\n1. Open the lab interface with `pcap_open_live()` (promiscuous mode).\n2. Compile and set the BPF filter `udp dst port 40445` (`pcap_compile`, `pcap_setfilter`).\n3. Capture with `pcap_loop()` and print the source, destination and UDP payload.\n4. Compile: `gcc sniffer.c -o sniffer -lpcap`. Run: `sudo ./sniffer`, then `lab-trigger m6`.\n5. The payload is `FLAG(M6)=<value>`. Other UDP datagrams are decoys.\n\n**Submit:** the value.",
+      "solution": "See the reference solution `m6_sniffer.c`: filter `udp dst port 40445`, callback prints `%.*s` of the payload. Submit the value after `FLAG(M6)=`.",
       "solution_penalized": true,
       "hints": [
         {
-          "title": "Which library is required?",
-          "content": "Use libpcap; the development headers and library are installed on the SEED workstation.",
-          "hint_penalty": 2,
+          "title": "Libraries",
+          "content": "`#include <pcap.h>`, link with `-lpcap`.",
+          "hint_penalty": 5,
           "order": 0
         },
         {
-          "title": "Which BPF filter should be installed?",
-          "content": "Capture UDP packets with destination port 40445.",
-          "hint_penalty": 4,
+          "title": "Capture sequence",
+          "content": "`pcap_open_live` → `pcap_compile` → `pcap_setfilter` → `pcap_loop` with a callback.",
+          "hint_penalty": 10,
           "order": 1
         },
         {
-          "title": "Which functions form the capture sequence?",
-          "content": "Open the live capture, compile and set the filter, run the capture loop, then close the handle. Decode the UDP payload prefix `PCAP-LAB:`.",
-          "hint_penalty": 6,
+          "title": "Parsing",
+          "content": "The Ethernet header is 14 bytes; the IP header length is `ip_hl*4`; the UDP header is 8 bytes. The payload follows.",
+          "hint_penalty": 15,
           "order": 2
         }
       ],
@@ -194,7 +266,7 @@
       "commands_required": false
     },
     {
-      "title": "Mission 7 – Inspect a Telnet session",
+      "title": "Mission 7 – Eavesdrop on a Telnet login",
       "level_type": "TRAINING_LEVEL",
       "order": 8,
       "estimated_duration": 18,
@@ -202,26 +274,26 @@
       "answer": null,
       "answer_variable_name": "flag_m7_telnet",
       "variant_answers": true,
-      "content": "## Objective\nDemonstrate why Telnet is unsafe for transmitting credentials.\n\n1. Start a packet capture for TCP port 23 on the attacker interface.\n2. Run `/opt/netsec-lab/trigger-client-telnet.sh` to generate a controlled login attempt from the client to the Telnet service on the attacker.\n3. Inspect the TCP payload or follow the TCP stream.\n4. Identify the password transmitted in plaintext.\n\n**Submit:** the captured password.\n\nThis is a deliberately vulnerable, isolated training service. Do not reuse these credentials anywhere else.",
-      "solution": "Capture with `tcpdump -ni <interface> -s0 -A 'tcp port 23'` or Wireshark Follow TCP Stream. Run `sudo /opt/netsec-lab/trigger-client-telnet.sh`. The client sends username `labtelnet` followed by the individualized password. Submit the password value.",
+      "content": "## Objective\nShow why Telnet is unsafe: recover a password sent in plain text.\n\n1. Capture TCP port 23 (tcpdump, Scapy or Wireshark *Follow TCP stream*).\n2. Run `lab-trigger m7`. The client logs in twice to the Telnet service of the attacker with different accounts.\n3. Find the password used for the account **labuser**.\n\n**Submit:** the password of `labuser`.",
+      "solution": "`sudo tcpdump -ni <iface> -A 'tcp dst port 23'` or Wireshark → Follow TCP Stream, while running `lab-trigger m7`. The line after `labuser` is the password.",
       "solution_penalized": true,
       "hints": [
         {
-          "title": "Which port should you monitor?",
-          "content": "Telnet uses TCP port 23.",
-          "hint_penalty": 2,
+          "title": "Port",
+          "content": "Telnet is TCP port 23.",
+          "hint_penalty": 5,
           "order": 0
         },
         {
-          "title": "How can you reconstruct the session?",
-          "content": "Use Wireshark's Follow TCP Stream feature or print the TCP payload in ASCII.",
-          "hint_penalty": 4,
+          "title": "Two logins",
+          "content": "Only one of the two logins uses the account `labuser`; the other password is wrong.",
+          "hint_penalty": 10,
           "order": 1
         },
         {
-          "title": "What should you submit?",
-          "content": "The second credential line is the password. Telnet transmits it without encryption.",
-          "hint_penalty": 6,
+          "title": "Where",
+          "content": "Keystrokes are sent line by line: the user name first, the password in the next packet.",
+          "hint_penalty": 10,
           "order": 2
         }
       ],
@@ -234,17 +306,45 @@
       "commands_required": false
     },
     {
-      "title": "Mission 8 – Construct an IP packet with C raw sockets",
-      "level_type": "INFO_LEVEL",
+      "title": "Mission 8 – Build a packet with C raw sockets",
+      "level_type": "TRAINING_LEVEL",
       "order": 9,
       "estimated_duration": 25,
       "minimal_possible_solve_time": null,
-      "content": "## Objective\nWrite a C program that constructs an IPv4/ICMP packet using a raw socket and verify the packet in the isolated lab.\n\n1. Create a raw socket and handle errors.\n2. Construct IPv4 and ICMP headers and a clearly identified payload.\n3. Send only to the lab server `10.9.0.7`.\n4. Capture and verify source, destination, protocol, total length, checksum behavior, and payload.\n5. Save the C source and PCAP.\n6. Explain byte order and checksum behavior in your report.\n\n**Instructor-reviewed mission (no flag):** submit compilable source and a PCAP showing the packet fields. The instructor grades evidence; there is no answer flag.\n\n### Instructor scoring\nThis mission is scored manually using the rubric in `INSTRUCTOR-GRADING.md`. The training-platform level is informational and does not automatically award points.",
+      "answer": null,
+      "answer_variable_name": "flag_m8_raw",
+      "variant_answers": true,
+      "content": "## Objective\nBuild an IPv4 ICMP echo request with a C raw socket (`IP_HDRINCL`), field by field.\n\nThe server answers only a **correct** packet:\n- source address: your own (10.1.26.10), destination 10.1.26.12\n- ICMP type 8 (echo request), code 0\n- IP identification field **0x1337**\n- payload starting with `NETSEC`\n- valid IP header checksum and valid ICMP checksum\n\nSniff the lab interface: the reply contains `FLAG(M8)=<value>`.\n\n**Submit:** the value.\n*Report question: explain byte order (htons) and how the Internet checksum is computed.*",
+      "solution": "See the reference solution `m8_rawsock.c`. Sniff `icmp and src host 10.1.26.12` while running it as root; the reply carries `FLAG(M8)=<value>`.",
+      "solution_penalized": true,
+      "hints": [
+        {
+          "title": "Raw socket",
+          "content": "`socket(AF_INET, SOCK_RAW, IPPROTO_RAW)` and `setsockopt(IP_HDRINCL)`. You fill in the IP header yourself.",
+          "hint_penalty": 5,
+          "order": 0
+        },
+        {
+          "title": "Fields",
+          "content": "`ip_id = htons(0x1337)`, `ip_p = IPPROTO_ICMP`, `ip_len` = total length, ICMP `type = 8`.",
+          "hint_penalty": 10,
+          "order": 1
+        },
+        {
+          "title": "Checksums",
+          "content": "Compute the ICMP checksum over the ICMP header + payload first, then the IP header checksum. Sum 16-bit words, fold the carry, invert.",
+          "hint_penalty": 15,
+          "order": 2
+        }
+      ],
+      "incorrect_answer_limit": 10,
       "attachments": [],
+      "max_score": 30,
+      "reference_solution": [],
       "mitre_techniques": [],
       "expected_commands": [],
       "commands_required": false
     }
   ],
-  "estimated_duration": 150
+  "estimated_duration": 170
 }

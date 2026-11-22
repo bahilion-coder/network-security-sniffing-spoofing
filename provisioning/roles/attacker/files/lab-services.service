@@ -1,0 +1,12 @@
+[Unit]
+Description=Lab services on the attacker (fake Telnet, TCP listeners)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/bin/python3 /opt/lab/lab-services.py
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

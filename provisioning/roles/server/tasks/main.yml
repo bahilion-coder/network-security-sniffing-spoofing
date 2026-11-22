@@ -1,27 +1,60 @@
 ---
-- name: Install target network services
-  ansible.builtin.apt:
-    name:
-      - openssh-server
-      - nginx
-      - netcat-openbsd
+# Server: "user machine" with the responder of Missions 3 and 8. Students never log in here.
+- name: Install packages
+  apt:
+    name: [python3-scapy, iputils-ping, iproute2, iptables]
     state: present
+    update_cache: yes
+  environment:
+    DEBIAN_FRONTEND: noninteractive
 
-- name: Publish safe landing page without token URLs
-  ansible.builtin.copy:
-    dest: /var/www/html/index.html
-    mode: '0644'
-    content: |
-      <html><body><h1>Network Security TP target</h1>
-      <p>Authorized isolated training environment.</p>
-      <p>Mission tokens are not exposed through public HTTP endpoints.</p>
-      </body></html>
-
-- name: Enable target services
-  ansible.builtin.service:
-    name: "{{ item }}"
-    state: started
-    enabled: true
+- name: Lab directories
+  file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
   loop:
-    - ssh
-    - nginx
+    - { path: /opt/lab, mode: "0755" }
+    - { path: /opt/lab/secrets, mode: "0700" }
+
+- name: Write the secrets of this sandbox
+  copy:
+    content: "{{ item.value }}\n"
+    dest: "/opt/lab/secrets/{{ item.name }}"
+    owner: root
+    group: root
+    mode: "0600"
+  loop:
+    - { name: m3, value: "{{ flag_m3_spoof }}" }
+    - { name: m8, value: "{{ flag_m8_raw }}" }
+  loop_control:
+    label: "{{ item.name }}"
+  no_log: true
+
+- name: Lab scripts
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  loop:
+    - { src: responder.py, dest: /opt/lab/responder.py, mode: "0750" }
+    - { src: lab-net, dest: /usr/local/sbin/lab-net, mode: "0755" }
+
+- name: systemd units
+  copy:
+    src: "{{ item }}"
+    dest: "/etc/systemd/system/{{ item }}"
+    mode: "0644"
+  loop: [lab-net.service, lab-responder.service]
+
+- name: Enable and start the services
+  systemd:
+    name: "{{ item }}"
+    daemon_reload: yes
+    enabled: yes
+    state: restarted
+  loop: [lab-net, lab-responder]

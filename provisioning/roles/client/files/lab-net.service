@@ -1,0 +1,13 @@
+[Unit]
+Description=Lab network preparation (alias address, mirroring)
+After=network-online.target
+Wants=network-online.target
+Before=lab-noise.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/lab-net
+
+[Install]
+WantedBy=multi-user.target

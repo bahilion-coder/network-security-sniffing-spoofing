@@ -4,7 +4,7 @@ hosts:
   - name: attacker
     base_box:
       # Confirm the exact image name and management username in OpenStack.
-      image: seed-ubuntu-20.04
+      image: seed
       mgmt_user: seed
     flavor: m1.medium
 

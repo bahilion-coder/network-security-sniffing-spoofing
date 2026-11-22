@@ -5,7 +5,7 @@ hosts:
     base_box:
       # Confirm the exact image name and management username in OpenStack.
       image: seed
-      mgmt_user: seed
+      mgmt_user: ubuntu
     flavor: m1.medium
 
   - name: client

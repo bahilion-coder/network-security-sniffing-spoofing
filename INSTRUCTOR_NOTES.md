@@ -6,13 +6,13 @@ Topology, accounts, image names and playbook layout follow the `seed-bof-lab` sa
 
 `variables.yml` declares 8 APG variables of type `text` (one per mission flag). The platform generates new values for every sandbox; they are injected into Ansible under the same name and written into root-only files (`/opt/lab/secrets/*`) on the machine that emits the flag. `training.json` levels use `variant_answers: true` and `answer_variable_name`. The student submits only the value found after `FLAG(Mx)=`.
 
-## 1. Topology (lab-switch 10.1.26.0/24, all VMs m1.medium)
+## 1. Topology (lab-switch 10.1.26.0/24, attacker, client and server m1.medium, router standard.small (as in seed-bof-lab))
 
 | Node | Address | Image | Student access |
 |---|---|---|---|
 | attacker | 10.1.26.10 | SEED Ubuntu 20.04 | yes (account `seed` / `dees`, sudo) |
-| client | 10.1.26.11 | Debian 12 | only `lab-trigger <id>` (SSH forced command) |
-| server | 10.1.26.12 | Debian 12 | none (packets only) |
+| client | 10.1.26.11 | SEED Ubuntu (image `seed`) | only `lab-trigger <id>` (SSH forced command) |
+| server | 10.1.26.12 | SEED Ubuntu (image `seed`) | none (packets only) |
 | router | 10.1.26.1 | Debian 12 | none; gateway + simulated path 172.31.0.0/16 |
 
 The router also hosts three network namespaces (hop2 172.31.1.2, hop3 172.31.2.2, far 172.31.3.2) that make a 4-hop path for the traceroute mission.
@@ -71,7 +71,7 @@ A virtual switch does not show a machine the unicast traffic of other machines. 
 ## 8. To confirm on the first real deployment
 
 - The cloud must allow the attacker to send other source addresses (Missions 3 and 5).
-- The Debian 12 kernel on client and server must support `iptables -j TEE` (traffic mirroring).
+- The SEED Ubuntu kernel on client and server must support `iptables -j TEE` (traffic mirroring).
 - The platform should stop a score at zero (penalties are already capped by mission points).
 - The access level text uses `seed` / `dees` as in the playbook.
 

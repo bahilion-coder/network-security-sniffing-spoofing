@@ -40,10 +40,10 @@ net_mappings:
     ip: 10.1.26.10
   - host: client
     network: lab-switch
-    ip: 10.1.26.11
+    ip: 10.1.26.20
   - host: server
     network: lab-switch
-    ip: 10.1.26.12
+    ip: 10.1.26.30
 
 router_mappings:
   - router: router

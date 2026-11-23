@@ -9,14 +9,14 @@ hosts:
 
   - name: client
     base_box:
-      image: debian-12-x86_64
-      mgmt_user: debian
+      image: seed
+      mgmt_user: ubuntu
     flavor: m1.medium
 
   - name: server
     base_box:
-      image: debian-12-x86_64
-      mgmt_user: debian
+      image: seed
+      mgmt_user: ubuntu
     flavor: m1.medium
 
 routers:

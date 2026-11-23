@@ -13,7 +13,7 @@ Topology, accounts, image names and playbook layout follow the `seed-bof-lab` sa
 | attacker | 10.1.26.10 | SEED Ubuntu 20.04 | yes (account `seed` / `dees`, sudo) |
 | client | 10.1.26.11 | SEED Ubuntu (image `seed`) | only `lab-trigger <id>` (SSH forced command) |
 | server | 10.1.26.12 | SEED Ubuntu (image `seed`) | none (packets only) |
-| router | 10.1.26.1 | Debian 12 | none; gateway + simulated path 172.31.0.0/16 |
+| lab-router | 10.1.26.1 | Debian 12 | none; gateway + simulated path 172.31.0.0/16 |
 
 The router also hosts three network namespaces (hop2 172.31.1.2, hop3 172.31.2.2, far 172.31.3.2) that make a 4-hop path for the traceroute mission.
 

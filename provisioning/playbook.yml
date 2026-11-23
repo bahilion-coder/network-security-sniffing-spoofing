@@ -24,7 +24,7 @@
     - role: server
 
 - name: Configure router
-  hosts: router
+  hosts: lab-router
   become: true
   roles:
     - role: router

@@ -22,7 +22,7 @@ All eight levels are auto-graded: 200 platform points = 20/20 (grade = points / 
 | attacker | seed | ubuntu | m1.medium | 10.1.26.10 |
 | client | seed | ubuntu | m1.medium | 10.1.26.11 |
 | server | seed | ubuntu | m1.medium | 10.1.26.12 |
-| router | debian-12-x86_64 | debian | standard.small | 10.1.26.1 |
+| lab-router | debian-12-x86_64 | debian | standard.small | 10.1.26.1 |
 
 Network `lab-switch` 10.1.26.0/24. The student works only on `attacker` (login `seed` / `dees`); `lab-trigger <id>` asks the client to generate traffic.
 

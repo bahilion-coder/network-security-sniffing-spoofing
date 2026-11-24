@@ -16,7 +16,6 @@
   ],
   "state": "UNRELEASED",
   "show_stepper_bar": true,
-  "variant_sandboxes": true,
   "levels": [
     {
       "title": "Introduction and safety rules",
@@ -34,8 +33,7 @@
       "minimal_possible_solve_time": null,
       "passkey": "start",
       "cloud_content": "Your first task is to access the sandbox where you will complete all following tasks. After you have connected, submit the answer **`start`**.\n\n### Sandbox access\n1. In the topology overview on the right, right-click on **`attacker`** and choose **Open GUI** (or connect over SSH).\n2. Log in with username **`seed`** and password **`dees`**.\n\nYou work only on `attacker`. Run `lab-trigger list` in a terminal to see the traffic scenarios; starter code and a short reference are in `~/lab`.",
-      "local_content": "Cloud sandbox access is required for this scenario.",
-      "content": ""
+      "local_content": "Cloud sandbox access is required for this scenario."
     },
     {
       "title": "Mission 1 – Sniff ICMP packets with Scapy",
@@ -345,6 +343,5 @@
       "expected_commands": [],
       "commands_required": false
     }
-  ],
-  "estimated_duration": 170
+  ]
 }
